@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Memory Game - Dark/Light Mode</title>
+<style>
+  /* CSS variables for light & dark mode */
+  :root {
+    --bg-color: #f0f2f5;
+    --text-color: #333;
+    --primary-color: #3498db;
+    --card-front-bg: linear-gradient(145deg, #d1d9e6, #f7f9fc);
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    --card-shadow-hover: 0 4px 14px rgba(0,0,0,0.2);
+    --matched-glow: #27ae60;
+    --button-bg: #2980b9;
+    --button-bg-hover: #1c5980;
+    --button-bg-active: #144060;
+    --stats-color: #34495e;
+    --header-color: #2c3e50;
+    --message-color: #27ae60;
+  }
+  /* Dark mode variables override */
+  body.dark {
+    --bg-color: #121619;
+    --text-color: #eee;
+    --primary-color: #3498db;
+    --card-front-bg: linear-gradient(145deg, #232b33, #2c363f);
+    --card-shadow: 0 2px 6px rgba(0,0,0,0.8);
+    --card-shadow-hover: 0 4px 14px rgba(0,0,0,1);
+    --matched-glow: #27ae60;
+    --button-bg: #2980b9;
+    --button-bg-hover: #1c5980;
+    --button-bg-active: #144060;
+    --stats-color: #a0b0c0;
+    --header-color: #ecf0f1;
+    --message-color: #27ae60;
+  }
+
+  /* Reset and base */
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 1.5rem 1rem;
+    transition: background-color 0.4s ease, color 0.4s ease;
+  }
+  h1 {
+    font-weight: 700;
+    font-size: 2.2rem;
+    margin-bottom: 0.4rem;
+    color: var(--header-color);
+    user-select: none;
+  }
+  .game-stats {
+    font-weight: 600;
+    margin-bottom: 1.2rem;
+    font-size: 1.1rem;
+    color: var(--stats-color);
+  }
+
+  /* Grid container */
+  .grid {
+    display: grid;
+    gap: 12px;
+    width: 90vw;
+    max-width: 520px;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  }
+
+  /* Card styles */
+  .card {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* 1:1 Aspect Ratio */
+    perspective: 700px;
+    cursor: pointer;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card:hover:not(.flipped):not(.matched) {
+    transform: scale(1.05);
+    box-shadow: var(--card-shadow-hover);
+  }
+
+  .card.matched {
+    cursor: default;
+    box-shadow: 0 0 12px 3px var(--matched-glow);
+  }
+
+  .card-inner {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+  .card.flipped .card-inner {
+    transform: rotateY(180deg);
+  }
+
+  .card-front, .card-back {
+    position: absolute;
+    inset: 0;
+    border-radius: 12px;
+    backface-visibility: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.8rem;
+    user-select: none;
+  }
+
+  /* Front side: card back */
+  .card-front {
+    background: var(--card-front-bg);
+    box-shadow: inset 3px 3px 6px rgba(0,0,0,0.1),
+                inset -3px -3px 6px rgba(255,255,255,0.9);
+  }
+
+  /* Back side: symbol */
+  .card-back {
+    background: var(--primary-color);
+    color: white;
+    transform: rotateY(180deg);
+    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.6);
+  }
+
+  /* Game message */
+  .message {
+    margin-top: 1.3rem;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--message-color);
+    min-height: 1.6em;
+    user-select: none;
+    transition: color 0.4s ease;
+  }
+
+  /* Buttons container */
+  .buttons {
+    margin-top: 1.6rem;
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Button style */
+  button {
+    background: var(--button-bg);
+    color: #fff;
+    font-weight: 600;
+    border: none;
+    padding: 0.6rem 1.4rem;
+    font-size: 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.25s ease;
+    box-shadow: 0 4px 8px rgba(41, 128, 185, 0.3);
+    user-select: none;
+    flex: 1 1 140px;
+    max-width: 180px;
+  }
+  button:hover,
+  button:focus {
+    background: var(--button-bg-hover);
+    outline: none;
+  }
+  button:active {
+    background: var(--button-bg-active);
+  }
+
+  /* Responsive tweaks */
+  @media (min-width: 700px) {
+    .grid {
+      max-width: 520px;
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+</style>
+</head>
+<body>
+
+<h1>Memory Game</h1>
+<div class="game-stats" aria-live="polite">
+  Attempts: <span id="attempts">0</span> | Matches: <span id="matches">0</span>
+</div>
+
+<div class="grid" id="game-grid" role="list" aria-label="Memory game cards"></div>
+
+<div class="message" id="message" aria-live="assertive"></div>
+
+<div class="buttons">
+  <button id="restart-btn" aria-label="Restart Memory Game">Restart Game</button>
+  <button id="toggle-theme-btn" aria-label="Toggle dark or light theme">Switch to Dark Mode</button>
+</div>
+
+<script>
+  const cardsSymbols = ['🍎', '🍌', '🍇', '🍓', '🥝', '🍒', '🍍', '🥥'];
+  let cardValues = [...cardsSymbols, ...cardsSymbols];
+
+  const grid = document.getElementById('game-grid');
+  const attemptsSpan = document.getElementById('attempts');
+  const matchesSpan = document.getElementById('matches');
+  const messageDiv = document.getElementById('message');
+  const restartBtn = document.getElementById('restart-btn');
+  const toggleThemeBtn = document.getElementById('toggle-theme-btn');
+  const body = document.body;
+
+  let firstCard = null;
+  let secondCard = null;
+  let lockBoard = false;
+  let attempts = 0;
+  let matches = 0;
+
+  // Shuffle function
+  function shuffle(array) {
+    for(let i = array.length -1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i+1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  // Create card element
+  function createCard(value) {
+    const card = document.createElement('div');
+    card.classList.add('card');
+    card.setAttribute('role', 'listitem');
+    card.setAttribute('tabindex', '0');
+    card.dataset.value = value;
+
+    card.innerHTML = `
+      <div class="card-inner">
+        <div class="card-front" aria-label="Card back"></div>
+        <div class="card-back" aria-label="Card front showing ${value}">${value}</div>
+      </div>
+    `;
+
+    card.addEventListener('click', handleCardClick);
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        handleCardClick(e);
+      }
+    });
+
+    return card;
+  }
+
+  // Initialize and start game
+  function startGame() {
+    attempts = 0;
+    matches = 0;
+    attemptsSpan.textContent = attempts;
+    matchesSpan.textContent = matches;
+    messageDiv.textContent = '';
+    firstCard = null;
+    secondCard = null;
+    lockBoard = false;
+
+    shuffle(cardValues);
+
+    grid.innerHTML = '';
+    cardValues.forEach(value => {
+      const card = createCard(value);
+      grid.appendChild(card);
+    });
+  }
+
+  // Handle card click
+  function handleCardClick(e) {
+    if(lockBoard) return;
+    const clickedCard = e.currentTarget;
+
+    if(clickedCard === firstCard || clickedCard.classList.contains('flipped') || clickedCard.classList.contains('matched')) return;
+
+    clickedCard.classList.add('flipped');
+
+    if(!firstCard) {
+      firstCard = clickedCard;
+      return;
+    }
+
+    secondCard = clickedCard;
+    lockBoard = true;
+    attempts++;
+    attemptsSpan.textContent = attempts;
+
+    if(firstCard.dataset.value === secondCard.dataset.value) {
+      matches++;
+      matchesSpan.textContent = matches;
+      firstCard.classList.add('matched');
+      secondCard.classList.add('matched');
+      resetTurn();
+
+      if(matches === cardsSymbols.length) {
+        messageDiv.textContent = `🎉 Congratulations! You matched all pairs in ${attempts} attempts.`;
+      }
+    } else {
+      setTimeout(() => {
+        firstCard.classList.remove('flipped');
+        secondCard.classList.remove('flipped');
+        resetTurn();
+      }, 1200);
+    }
+  }
+
+  // Reset turn state
+  function resetTurn() {
+    [firstCard, secondCard] = [null, null];
+    lockBoard = false;
+  }
+
+  // Theme toggle logic
+  function toggleTheme() {
+    const isDark = body.classList.toggle('dark');
+    localStorage.setItem('memoryGameTheme', isDark ? 'dark' : 'light');
+    updateToggleButton(isDark);
+  }
+
+  // Update button text based on current theme
+  function updateToggleButton(isDark) {
+    toggleThemeBtn.textContent = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    toggleThemeBtn.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+
+  // Load theme preference on page load
+  function loadTheme() {
+    const savedTheme = localStorage.getItem('memoryGameTheme');
+    if (savedTheme === 'dark') {
+      body.classList.add('dark');
+      updateToggleButton(true);
+    } else {
+      body.classList.remove('dark');
+      updateToggleButton(false);
+    }
+  }
+
+  // Event listeners
+  restartBtn.addEventListener('click', startGame);
+  toggleThemeBtn.addEventListener('click', toggleTheme);
+
+  // Initialize
+  loadTheme();
+  startGame();
+</script>
+
+</body>
+</html>
